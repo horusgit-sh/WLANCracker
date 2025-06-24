@@ -6,7 +6,7 @@ How to use:
 
 `kali@root:~/Downloads/LANCracker$ pip3 install -r requirements.txt`
 
-`kali@root:~/Downloads/LANCracker$ python3 wlancracker.py`
+`kali@root:~/Downloads/LANCracker$ ./wlancracker.py`
 
 
 
