@@ -1,7 +1,6 @@
+#!/usr/bin/env python3
 from scapy.all import *
 import time
-import sys
-import requests
 import argparse
 from scapy.layers.inet import ICMP, IP
 from scapy.layers.l2 import ARP, Ether
@@ -43,7 +42,7 @@ def restore(dest_ip, src_ip, dest_mac, src_mac):
     send(packet, count=4, verbose=False)
 
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ARP spoofing tool")
     parser.add_argument("-t", "--target-ip", help="Target IP address", type=str)
     parser.add_argument("-m", "--target-mac", help="Target MAC address", type=str)
@@ -74,6 +73,3 @@ def main():
         restore(target_IP, gateway_ip, target_MAC, gateway_mac)
         print("ARP table restored. Exiting.")
 
-
-if __name__ == "__main__":
-    main()
